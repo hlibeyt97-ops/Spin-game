@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spin - Online</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+body{background:#111;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:20px}
+#bottle{width:150px;transition:transform 3s cubic-bezier(.17,.67,.18,1.02);margin:40px auto;display:block}
+#table{width:300px;height:300px;border:2px solid #444;border-radius:50%;margin:20px auto;position:relative}
+.player{position:absolute;width:50px;height:50px;background:#333;border-radius:50%;line-height:50px;transform:translate(-50%,-50%)}
+input,button{padding:10px;margin:5px;border-radius:8px;border:none}
+button{background:#e11d48;color:#fff;font-weight:bold}
+#chat{max-height:150px;overflow-y:auto;background:#222;padding:10px;border-radius:10px;text-align:left}
+</style>
+</head>
+<body>
+<h2>🍾 Spin Game - ONLINE</h2>
+<div id="info">Masa kodu: <b id="tableCode"></b> <button onclick="copyLink()">Linki Kopyala</button></div>
+<div id="table"><img id="bottle" src="https://i.imgur.com/8Km9tLL.png"><div id="players"></div></div>
+<button id="spinBtn" onclick="spin()">FıRLAT!</button>
+<div id="chat"></div>
+<input id="msgInput" placeholder="Mesaj yaz..."><button onclick="sendMsg()">Göndər</button>
+
+<script>
+const SUPABASE_URL = "https://qcgmsgjsicbwyejxfhmk.supabase.co";
+const SUPABASE_KEY = "sb_publishable_0qGf1L8FF8bdeqbWozieQg_mT1q66IN";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let tableId = location.hash.replace('#','') || Math.random().toString(36).substring(2,6).toUpperCase();
+location.hash = tableId;
+document.getElementById('tableCode').innerText = tableId;
+let myId = localStorage.getItem('myId') || 'user_'+Math.random().toString(36).substring(2,7);
+localStorage.setItem('myId', myId);
+let myName = prompt("Adın nədir?") || myId;
+let angle = 0;
+
+function copyLink(){ navigator.clipboard.writeText(location.href); alert("Link kopyalandı! Dostuna at: "+location.href); }
+
+async function spin(){
+  angle += 720 + Math.random()*360;
+  document.getElementById('bottle').style.transform = `rotate(${angle}deg)`;
+  await supabase.from('spins').insert({table_id: tableId, from_id: myId, to_id: 'all', angle: Math.round(angle)});
+}
+
+async function sendMsg(){
+  const txt = document.getElementById('msgInput').value;
+  if(!txt) return;
+  await supabase.from('chats').insert({table_id: tableId, user_id: myId, user_name: myName, message: txt});
+  document.getElementById('msgInput').value='';
+}
+
+// Realtime - Fırlatmalar
+supabase.channel('spins-'+tableId)
+.on('postgres_changes',{event:'INSERT',schema:'public',table:'spins',filter:`table_id=eq.${tableId}`},payload=>{
+  if(payload.new.from_id !== myId){
+    document.getElementById('bottle').style.transform = `rotate(${payload.new.angle}deg)`;
+    addChat("Sistem", `${payload.new.from_id} şüşəni fırlatdı!`);
+  }
+}).subscribe();
+
+// Realtime - Chat
+supabase.channel('chats-'+tableId)
+.on('postgres_changes',{event:'INSERT',schema:'public',table:'chats',filter:`table_id=eq.${tableId}`},payload=>{
+  addChat(payload.new.user_name, payload.new.message);
+}).subscribe();
+
+function addChat(name,msg){
+  const c = document.getElementById('chat');
+  c.innerHTML += `<div><b>${name}:</b> ${msg}</div>`;
+  c.scrollTop = c.scrollHeight;
+}
+addChat("Sistem","Oyuna xoş gəldin! Linki dostlarına at, eyni masada oynayın.");
+</script>
+</body>
+</html>
