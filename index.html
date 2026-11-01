@@ -2,76 +2,58 @@
 <html lang="az">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Spin - Online</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Spin the Bottle ❤️</title>
 <style>
-body{background:#111;color:#fff;font-family:sans-serif;text-align:center;margin:0;padding:20px}
-#bottle{width:150px;transition:transform 3s cubic-bezier(.17,.67,.18,1.02);margin:40px auto;display:block}
-#table{width:300px;height:300px;border:2px solid #444;border-radius:50%;margin:20px auto;position:relative}
-.player{position:absolute;width:50px;height:50px;background:#333;border-radius:50%;line-height:50px;transform:translate(-50%,-50%)}
-input,button{padding:10px;margin:5px;border-radius:8px;border:none}
-button{background:#e11d48;color:#fff;font-weight:bold}
-#chat{max-height:150px;overflow-y:auto;background:#222;padding:10px;border-radius:10px;text-align:left}
+*{margin:0;padding:0;box-sizing:border-box;font-family: -apple-system,sans-serif;}
+body{background:#2a1a0e;height:100vh;display:flex;flex-direction:column;overflow:hidden;}
+.header{background:#0f0f0f;color:white;padding:10px 15px;display:flex;justify-content:space-between;}
+.top-bar{background:linear-gradient(#c68c53,#8B5A2B);display:flex;justify-content:space-between;padding:6px 10px;align-items:center;color:white;}
+.table{flex:1;background: radial-gradient(#d2a679,#8B5A2B);position:relative;display:flex;align-items:center;justify-content:center;}
+#bottle{width:90px;transition:transform 3s cubic-bezier(0.2,0.8,0.3,1);filter:drop-shadow(0 10px 15px rgba(0,0,0,.5));z-index:10;}
+.seat{position:absolute;width:72px;height:92px;display:flex;flex-direction:column;align-items:center;}
+.avatar{width:64px;height:64px;border-radius:12px;border:3px solid gold;overflow:hidden;background:#222;box-shadow:0 4px 8px rgba(0,0,0,.4);}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.seat-name{font-size:10px;color:white;margin-top:3px;background:rgba(0,0,0,.6);padding:2px 6px;border-radius:10px;max-width:80px;white-space:nowrap;overflow:hidden;}
+.seat.active .avatar{border-color:#ff1744;box-shadow:0 0 15px #ff1744;transform:scale(1.15);}
+.status{position:absolute;top:35%;color:white;font-weight:bold;background:rgba(0,0,0,.3);padding:8px 16px;border-radius:20px;z-index:5;}
+.chat-area{background:white;height:42%;display:flex;flex-direction:column;}
+.messages{flex:1;overflow-y:auto;padding:8px;font-size:14px;}
+.msg{margin-bottom:6px;}
+.input-bar{display:flex;padding:8px;gap:8px;border-top:1px solid #ddd;}
+.input-bar input{flex:1;padding:10px 14px;border:1px solid #ddd;border-radius:20px;outline:none;}
+.input-bar button{background:#ff9800;color:white;border:none;width:36px;height:36px;border-radius:50%;}
+.popup{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:100;}
+.popup-box{background:white;padding:20px;border-radius:20px;text-align:center;width:85%;}
+.popup-box button{margin:5px;padding:10px 20px;border:none;border-radius:20px;font-weight:bold;}
+.yes{background:#ff1744;color:white;} .no{background:#ddd;}
 </style>
 </head>
 <body>
-<h2>🍾 Spin Game - ONLINE</h2>
-<div id="info">Masa kodu: <b id="tableCode"></b> <button onclick="copyLink()">Linki Kopyala</button></div>
-<div id="table"><img id="bottle" src="https://i.imgur.com/8Km9tLL.png"><div id="players"></div></div>
-<button id="spinBtn" onclick="spin()">FıRLAT!</button>
-<div id="chat"></div>
-<input id="msgInput" placeholder="Mesaj yaz..."><button onclick="sendMsg()">Göndər</button>
-
+<div class="header"><span>✕ Spin the Bottle 🍾❤️</span><span>⋮</span></div>
+<div class="top-bar"><div>❤️ 4</div><div>⚙️ 🏆 ☰ 🎁</div><div style="font-size:12px;background:rgba(0,0,0,.3);padding:4px 8px;border-radius:12px;">Masa 1M</div></div>
+<div class="table" id="table">
+<img id="bottle" src="https://pngimg.com/d/bottle_PNG2118.png">
+<div class="status" id="status">Sonraki sırayı bekliyoruz</div>
+</div>
+<div class="chat-area">
+<div class="messages" id="messages"><div class="msg"><b>Elnur:</b> Salam</div></div>
+<div class="input-bar"><input id="chatInput" placeholder="Mesaj yaz"><button onclick="sendMsg()">➤</button></div>
+</div>
+<div class="popup" id="kissPopup"><div class="popup-box"><h2 id="kissText">Öpüşecekler mi?</h2><div id="kissAvatars" style="display:flex;justify-content:center;gap:20px;margin:15px 0;"></div><button class="yes" onclick="closePopup(true)">Öp ❤️</button><button class="no" onclick="closePopup(false)">Pas</button></div></div>
 <script>
-const SUPABASE_URL = "https://qcgmsgjsicbwyejxfhmk.supabase.co";
-const SUPABASE_KEY = "sb_publishable_0qGf1L8FF8bdeqbWozieQg_mT1q66IN";
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-let tableId = location.hash.replace('#','') || Math.random().toString(36).substring(2,6).toUpperCase();
-location.hash = tableId;
-document.getElementById('tableCode').innerText = tableId;
-let myId = localStorage.getItem('myId') || 'user_'+Math.random().toString(36).substring(2,7);
-localStorage.setItem('myId', myId);
-let myName = prompt("Adın nədir?") || myId;
-let angle = 0;
-
-function copyLink(){ navigator.clipboard.writeText(location.href); alert("Link kopyalandı! Dostuna at: "+location.href); }
-
-async function spin(){
-  angle += 720 + Math.random()*360;
-  document.getElementById('bottle').style.transform = `rotate(${angle}deg)`;
-  await supabase.from('spins').insert({table_id: tableId, from_id: myId, to_id: 'all', angle: Math.round(angle)});
-}
-
-async function sendMsg(){
-  const txt = document.getElementById('msgInput').value;
-  if(!txt) return;
-  await supabase.from('chats').insert({table_id: tableId, user_id: myId, user_name: myName, message: txt});
-  document.getElementById('msgInput').value='';
-}
-
-// Realtime - Fırlatmalar
-supabase.channel('spins-'+tableId)
-.on('postgres_changes',{event:'INSERT',schema:'public',table:'spins',filter:`table_id=eq.${tableId}`},payload=>{
-  if(payload.new.from_id !== myId){
-    document.getElementById('bottle').style.transform = `rotate(${payload.new.angle}deg)`;
-    addChat("Sistem", `${payload.new.from_id} şüşəni fırlatdı!`);
-  }
-}).subscribe();
-
-// Realtime - Chat
-supabase.channel('chats-'+tableId)
-.on('postgres_changes',{event:'INSERT',schema:'public',table:'chats',filter:`table_id=eq.${tableId}`},payload=>{
-  addChat(payload.new.user_name, payload.new.message);
-}).subscribe();
-
-function addChat(name,msg){
-  const c = document.getElementById('chat');
-  c.innerHTML += `<div><b>${name}:</b> ${msg}</div>`;
-  c.scrollTop = c.scrollHeight;
-}
-addChat("Sistem","Oyuna xoş gəldin! Linki dostlarına at, eyni masada oynayın.");
+const avatars=["https://i.pravatar.cc/150?img=1","https://i.pravatar.cc/150?img=5","https://i.pravatar.cc/150?img=8","https://i.pravatar.cc/150?img=16","https://i.pravatar.cc/150?img=32","https://i.pravatar.cc/150?img=23","https://i.pravatar.cc/150?img=45","https://i.pravatar.cc/150?img=12"];
+const names=["Elnur","Aynur","Murad","Sevda","Roya","Elvin","Nigar","Kamran"];
+const table=document.getElementById('table'); const seats=[];
+function createSeats(){const r=Math.min(window.innerWidth,400)*0.36;for(let i=0;i<8;i++){const a=(i/8)*2*Math.PI-Math.PI/2;const x=Math.cos(a)*r;const y=Math.sin(a)*r;const d=document.createElement('div');d.className='seat';d.style.left=`calc(50% + ${x}px - 36px)`;d.style.top=`calc(50% + ${y}px - 46px)`;d.innerHTML=`<div class="avatar"><img src="${avatars[i]}"></div><div class="seat-name">${names[i]}</div>`;table.appendChild(d);seats.push(d);}} createSeats();
+let ang=0,spinning=false;const bottle=document.getElementById('bottle');const status=document.getElementById('status');
+function spin(){if(spinning)return;spinning=true;status.textContent="Şişe dönüyor...";ang+=1080+Math.random()*1440;bottle.style.transform=`rotate(${ang}deg)`;seats.forEach(s=>s.classList.remove('active'));setTimeout(()=>{let c=Math.round((ang%360)/45)%8;c=(8-c)%8;seats[c].classList.add('active');showKiss(c);spinning=false;status.textContent=`${names[c]} seçildi!`;},3000);}
+bottle.onclick=spin;table.onclick=spin;
+function showKiss(i){let o=(i+1)%8;document.getElementById('kissText').textContent=`${names[i]} ❤️ ${names[o]} - Öpüşecekler mi?`;document.getElementById('kissAvatars').innerHTML=`<div><img src="${avatars[i]}" style="width:60px;height:60px;border-radius:50%"><br>${names[i]}</div><div style="font-size:24px">💋</div><div><img src="${avatars[o]}" style="width:60px;height:60px;border-radius:50%"><br>${names[o]}</div>`;document.getElementById('kissPopup').style.display='flex';addMsg(`Sistem: Şişe ${names[i]}-ı seçti!`);}
+function closePopup(y){document.getElementById('kissPopup').style.display='none';addMsg(y?'Sistem: 💋 Öpüşme oldu!':'Sistem: Pas geçildi');setTimeout(()=>{status.textContent="Sonraki sırayı bekliyoruz";seats.forEach(s=>s.classList.remove('active'));},1500);}
+function addMsg(t){const m=document.getElementById('messages');const d=document.createElement('div');d.className='msg';d.innerHTML=t;m.appendChild(d);m.scrollTop=m.scrollHeight;}
+function sendMsg(){const inp=document.getElementById('chatInput');if(!inp.value.trim())return;addMsg(`<b>Sen:</b> ${inp.value}`);inp.value='';}
+document.getElementById('chatInput').addEventListener('keydown',e=>{if(e.key==='Enter')sendMsg();});
 </script>
 </body>
 </html>
